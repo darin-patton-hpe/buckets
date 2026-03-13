@@ -7,6 +7,7 @@ import (
 
 	"github.com/darin-patton-hpe/buckets/internal/data"
 	"github.com/darin-patton-hpe/nbalive"
+	"github.com/darin-patton-hpe/nbalive/live"
 )
 
 func TestInterfaceConformance(t *testing.T) {
@@ -126,7 +127,7 @@ func TestMockClientPlayByPlay_DefaultAndCustom(t *testing.T) {
 func TestMockClientWatch_DefaultAndCustom(t *testing.T) {
 	t.Run("default returns already-closed channel", func(t *testing.T) {
 		m := &data.MockClient{}
-		ch := m.Watch(context.Background(), "0022400001", nbalive.WatchConfig{})
+		ch := m.Watch(context.Background(), "0022400001", live.WatchConfig{})
 
 		select {
 		case _, ok := <-ch:
@@ -140,18 +141,18 @@ func TestMockClientWatch_DefaultAndCustom(t *testing.T) {
 
 	t.Run("custom watch function is used", func(t *testing.T) {
 		wantID := "0022401234"
-		wantCfg := nbalive.WatchConfig{BoxScore: true}
-		wantEvt := nbalive.Event{Kind: nbalive.EventAction, GameID: wantID}
+		wantCfg := live.WatchConfig{BoxScore: true}
+		wantEvt := live.Event{Kind: live.EventAction, GameID: wantID}
 
 		m := &data.MockClient{
-			WatchFunc: func(_ context.Context, gameID string, cfg nbalive.WatchConfig) <-chan nbalive.Event {
+			WatchFunc: func(_ context.Context, gameID string, cfg live.WatchConfig) <-chan live.Event {
 				if gameID != wantID {
 					t.Fatalf("Watch() gameID = %q, want %q", gameID, wantID)
 				}
 				if cfg.BoxScore != wantCfg.BoxScore {
 					t.Fatalf("Watch() cfg.BoxScore = %v, want %v", cfg.BoxScore, wantCfg.BoxScore)
 				}
-				ch := make(chan nbalive.Event, 1)
+				ch := make(chan live.Event, 1)
 				ch <- wantEvt
 				close(ch)
 				return ch

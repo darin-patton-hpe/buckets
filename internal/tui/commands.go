@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/darin-patton-hpe/buckets/internal/data"
-	"github.com/darin-patton-hpe/nbalive"
+	"github.com/darin-patton-hpe/nbalive/live"
 )
 
 const scoreboardInterval = 30 * time.Second
@@ -46,7 +46,7 @@ func fetchPlayByPlayCmd(client data.NBAClient, gameID string) tea.Cmd {
 
 // waitWatchCmd blocks on the watch channel and returns events one at a time.
 // Returns watchClosedMsg when the channel closes.
-func waitWatchCmd(ch <-chan nbalive.Event) tea.Cmd {
+func waitWatchCmd(ch <-chan live.Event) tea.Cmd {
 	return func() tea.Msg {
 		evt, ok := <-ch
 		if !ok {

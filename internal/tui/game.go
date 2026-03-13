@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/darin-patton-hpe/buckets/internal/data"
 	"github.com/darin-patton-hpe/nbalive"
+	"github.com/darin-patton-hpe/nbalive/live"
 )
 
 // isNotAvailable reports whether err indicates an HTTP 403 (data not yet on CDN).
@@ -41,7 +42,7 @@ type gameModel struct {
 	// Watch state.
 	watchCtx    context.Context
 	watchCancel context.CancelFunc
-	watchCh     <-chan nbalive.Event
+	watchCh     <-chan live.Event
 
 	// Dimensions.
 	width  int
@@ -95,7 +96,7 @@ func (gm *gameModel) startWatch() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	gm.watchCtx = ctx
 	gm.watchCancel = cancel
-	gm.watchCh = gm.client.Watch(ctx, gm.gameID, nbalive.WatchConfig{
+	gm.watchCh = gm.client.Watch(ctx, gm.gameID, live.WatchConfig{
 		BoxScore: true,
 	})
 	return waitWatchCmd(gm.watchCh)
@@ -145,20 +146,20 @@ func (gm *gameModel) update(msg tea.Msg) tea.Cmd {
 	case watchEventMsg:
 		evt := msg.event
 		switch evt.Kind {
-		case nbalive.EventBoxScore:
+		case live.EventBoxScore:
 			gm.boxScore = evt.BoxScore
 			gm.updateViewportContent()
-		case nbalive.EventAction:
+		case live.EventAction:
 			if evt.Action != nil {
 				gm.actions = append(gm.actions, *evt.Action)
 				gm.updateViewportContent()
 			}
-		case nbalive.EventGameOver:
+		case live.EventGameOver:
 			gm.boxScore = evt.BoxScore
 			gm.updateViewportContent()
 			gm.stopWatch()
 			return nil
-		case nbalive.EventError:
+		case live.EventError:
 			// Transient — keep watching.
 		}
 		// Re-listen on the channel.

@@ -24,8 +24,8 @@ github.com/clipperhouse/displaywidth v0.11.0 h1:lBc6kY44VFw+TDx4I8opi/EtL9m20WSE
 github.com/clipperhouse/displaywidth v0.11.0/go.mod h1:bkrFNkf81G8HyVqmKGxsPufD3JhNl3dSqnGhOoSD/o0=
 github.com/clipperhouse/uax29/v2 v2.7.0 h1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJv2v7Vk=
 github.com/clipperhouse/uax29/v2 v2.7.0/go.mod h1:EFJ2TJMRUaplDxHKj1qAEhCtQPW2tJSwu5BF98AuoVM=
-github.com/darin-patton-hpe/nbalive v0.0.0-20260312200339-2260e874b50e h1:R8K1R3u1bKzMKaK1N7OE9ZfjNB/014CFqszID36txY8=
-github.com/darin-patton-hpe/nbalive v0.0.0-20260312200339-2260e874b50e/go.mod h1:xSdY8EjqyKUn2Waf1obKYChDH4wAHjSl9GAISbR/Vi0=
+github.com/darin-patton-hpe/nbalive v0.0.0-20260313142234-334abcb79354 h1:DWpMkIbesH4c/adJTld0D5KEgHQb+0EP++SnYUkMZ1M=
+github.com/darin-patton-hpe/nbalive v0.0.0-20260313142234-334abcb79354/go.mod h1:xSdY8EjqyKUn2Waf1obKYChDH4wAHjSl9GAISbR/Vi0=
 github.com/lucasb-eyer/go-colorful v1.3.0 h1:2/yBRLdWBZKrf7gB40FoiKfAWYQ0lqNcbuQwVHXptag=
 github.com/lucasb-eyer/go-colorful v1.3.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.20 h1:WcT52H91ZUAwy8+HUkdM3THM6gXqXuLJi9O3rjcQQaQ=
