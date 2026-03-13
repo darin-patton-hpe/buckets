@@ -6,7 +6,7 @@ require (
 	charm.land/bubbles/v2 v2.0.0
 	charm.land/bubbletea/v2 v2.0.2
 	charm.land/lipgloss/v2 v2.0.2
-	github.com/darin-patton-hpe/nbalive v0.0.0-20260312200339-2260e874b50e
+	github.com/darin-patton-hpe/nbalive v0.0.0-20260313142234-334abcb79354
 )
 
 require (

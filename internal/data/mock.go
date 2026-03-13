@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/darin-patton-hpe/nbalive"
+	"github.com/darin-patton-hpe/nbalive/live"
 )
 
 // MockClient implements NBAClient for testing.
@@ -11,7 +12,7 @@ type MockClient struct {
 	ScoreboardFunc func(ctx context.Context) (*nbalive.ScoreboardResponse, error)
 	BoxScoreFunc   func(ctx context.Context, gameID string) (*nbalive.BoxScoreResponse, error)
 	PlayByPlayFunc func(ctx context.Context, gameID string) (*nbalive.PlayByPlayResponse, error)
-	WatchFunc      func(ctx context.Context, gameID string, cfg nbalive.WatchConfig) <-chan nbalive.Event
+	WatchFunc      func(ctx context.Context, gameID string, cfg live.WatchConfig) <-chan live.Event
 }
 
 func (m *MockClient) Scoreboard(ctx context.Context) (*nbalive.ScoreboardResponse, error) {
@@ -35,11 +36,11 @@ func (m *MockClient) PlayByPlay(ctx context.Context, gameID string) (*nbalive.Pl
 	return &nbalive.PlayByPlayResponse{}, nil
 }
 
-func (m *MockClient) Watch(ctx context.Context, gameID string, cfg nbalive.WatchConfig) <-chan nbalive.Event {
+func (m *MockClient) Watch(ctx context.Context, gameID string, cfg live.WatchConfig) <-chan live.Event {
 	if m.WatchFunc != nil {
 		return m.WatchFunc(ctx, gameID, cfg)
 	}
-	ch := make(chan nbalive.Event)
+	ch := make(chan live.Event)
 	close(ch)
 	return ch
 }

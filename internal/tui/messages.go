@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/darin-patton-hpe/nbalive"
+	"github.com/darin-patton-hpe/nbalive/live"
 )
 
 // scoreboardMsg carries the result of a scoreboard fetch.
@@ -26,7 +27,7 @@ type playByPlayMsg struct {
 
 // watchEventMsg wraps a single event from the Watch channel.
 type watchEventMsg struct {
-	event nbalive.Event
+	event live.Event
 }
 
 // watchClosedMsg signals that the Watch channel has closed.
