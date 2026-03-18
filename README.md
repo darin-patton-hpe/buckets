@@ -81,6 +81,23 @@ This tells Go to use the local `../nbalive` directory instead of fetching from t
 go mod edit -dropreplace github.com/darin-patton-hpe/nbalive
 ```
 
+## Releasing
+
+Releases are automated via GitHub Actions and [GoReleaser](https://goreleaser.com). To create a release, open a PR with a title starting with `release v` followed by a semver version:
+
+```
+release v1.0.0
+```
+
+When the PR is merged, GitHub uses the PR title as the merge commit message. CI detects the version from the commit message and:
+
+1. Runs tests
+2. Creates a git tag matching the version
+3. Builds binaries for darwin, linux, and windows (amd64 and arm64)
+4. Publishes a GitHub Release with the artifacts
+
+Pull requests targeting `main` automatically build snapshot binaries, available as downloadable artifacts on the workflow run.
+
 ## Project Structure
 
 ```

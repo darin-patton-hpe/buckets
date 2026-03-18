@@ -57,7 +57,7 @@ jobs:
           name: buckets-snapshot-windows
           path: dist/*.zip
 
-  tag:
+  release:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -66,21 +66,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get next version
-        id: version
+      - name: Check for release commit
+        id: check
         run: |
-          latest=$(git tag -l 'v*' --sort=-v:refname | head -n1)
-          if [ -z "$latest" ]; then
-            echo "tag=v0.1.0" >> "$GITHUB_OUTPUT"
+          msg=$(git log -1 --format='%s')
+          if echo "$msg" | grep -qiE '^release v[0-9]+\.[0-9]+\.[0-9]+'; then
+            version=$(echo "$msg" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
           else
-            # Increment patch version
-            major=$(echo "$latest" | cut -d. -f1)
-            minor=$(echo "$latest" | cut -d. -f2)
-            patch=$(echo "$latest" | cut -d. -f3)
-            echo "tag=${major}.${minor}.$((patch + 1))" >> "$GITHUB_OUTPUT"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - uses: actions/setup-go@v5
+        if: steps.check.outputs.should_release == 'true'
+        with:
+          go-version-file: go.mod
+
       - name: Create tag
+        if: steps.check.outputs.should_release == 'true'
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          git tag ${{ steps.check.outputs.version }}
+          git push origin ${{ steps.check.outputs.version }}
+
+      - name: Release
+        if: steps.check.outputs.should_release == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
