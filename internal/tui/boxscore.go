@@ -18,23 +18,23 @@ type boxScoreCol struct {
 
 func boxScoreCols() []boxScoreCol {
 	return []boxScoreCol{
-		{"MIN", 5, func(s nbalive.PlayerStats) string { return formatMinutes(s.Minutes) }},
-		{"PTS", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Points) }},
-		{"REB", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.ReboundsTotal) }},
-		{"AST", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Assists) }},
-		{"STL", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Steals) }},
-		{"BLK", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Blocks) }},
-		{"TO", 4, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Turnovers) }},
-		{"FG", 7, func(s nbalive.PlayerStats) string {
+		{"MIN", 6, func(s nbalive.PlayerStats) string { return formatMinutes(s.Minutes) }},
+		{"PTS", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Points) }},
+		{"REB", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.ReboundsTotal) }},
+		{"AST", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Assists) }},
+		{"STL", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Steals) }},
+		{"BLK", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Blocks) }},
+		{"TO", 5, func(s nbalive.PlayerStats) string { return fmt.Sprintf("%d", s.Turnovers) }},
+		{"FG", 8, func(s nbalive.PlayerStats) string {
 			return fmt.Sprintf("%d-%d", s.FieldGoalsMade, s.FieldGoalsAttempted)
 		}},
-		{"3P", 7, func(s nbalive.PlayerStats) string {
+		{"3P", 8, func(s nbalive.PlayerStats) string {
 			return fmt.Sprintf("%d-%d", s.ThreePointersMade, s.ThreePointersAttempted)
 		}},
-		{"FT", 7, func(s nbalive.PlayerStats) string {
+		{"FT", 8, func(s nbalive.PlayerStats) string {
 			return fmt.Sprintf("%d-%d", s.FreeThrowsMade, s.FreeThrowsAttempted)
 		}},
-		{"+/-", 5, func(s nbalive.PlayerStats) string {
+		{"+/-", 6, func(s nbalive.PlayerStats) string {
 			return fmt.Sprintf("%+.0f", s.PlusMinusPoints)
 		}},
 	}
@@ -48,20 +48,20 @@ func renderBoxScore(game *nbalive.BoxScoreGame, width int, s styles) string {
 
 	var b strings.Builder
 	cols := boxScoreCols()
+	isLive := game.GameStatus == nbalive.GameInProgress
 
-	// Determine how many columns fit.
-	nameWidth := 18
-	usedCols := fitColumns(cols, width, nameWidth)
+	nameWidth := 20
+	posWidth := 4
+	usedCols := fitColumns(cols, width, nameWidth+posWidth)
 
 	renderTeamTable := func(team *nbalive.BoxTeam) {
-		// Team header: "BOS 108"
 		header := s.teamTricode.Render(team.TeamTricode) + " " +
 			s.score.Render(fmt.Sprintf("%d", team.Score))
 		b.WriteString(header)
 		b.WriteString("\n")
 
-		// Column headers.
-		headerLine := s.headerCell.Width(nameWidth).Align(lipgloss.Left).Render("PLAYER")
+		headerLine := s.headerCell.Width(nameWidth).Align(lipgloss.Left).PaddingRight(0).Render("PLAYER")
+		headerLine += s.headerCell.Width(posWidth).Align(lipgloss.Left).PaddingRight(0).Render("")
 		for _, col := range usedCols {
 			headerLine += s.headerCell.Width(col.width).Render(col.header)
 		}
@@ -70,25 +70,22 @@ func renderBoxScore(game *nbalive.BoxScoreGame, width int, s styles) string {
 		b.WriteString(strings.Repeat("─", min(width, len(headerLine)+10)))
 		b.WriteString("\n")
 
-		// Starters.
 		for _, p := range team.Players {
 			if !p.Starter.Bool() {
 				continue
 			}
-			b.WriteString(renderPlayerRow(p, usedCols, nameWidth, s.starterRow, s))
+			b.WriteString(renderPlayerRow(p, usedCols, nameWidth, posWidth, s.starterRow, s, isLive))
 			b.WriteString("\n")
 		}
 
-		// Separator.
 		b.WriteString(s.dimText.Render(strings.Repeat("·", min(width, 60))))
 		b.WriteString("\n")
 
-		// Bench.
 		for _, p := range team.Players {
 			if p.Starter.Bool() || !p.Played.Bool() {
 				continue
 			}
-			b.WriteString(renderPlayerRow(p, usedCols, nameWidth, s.benchRow, s))
+			b.WriteString(renderPlayerRow(p, usedCols, nameWidth, posWidth, s.benchRow, s, isLive))
 			b.WriteString("\n")
 		}
 	}
@@ -101,24 +98,21 @@ func renderBoxScore(game *nbalive.BoxScoreGame, width int, s styles) string {
 }
 
 // renderPlayerRow renders a single player's stats row.
-func renderPlayerRow(p nbalive.BoxPlayer, cols []boxScoreCol, nameWidth int, rowStyle lipgloss.Style, s styles) string {
-	// Name with position.
+func renderPlayerRow(p nbalive.BoxPlayer, cols []boxScoreCol, nameWidth int, posWidth int, rowStyle lipgloss.Style, s styles, isLive bool) string {
 	name := p.NameI
-	if p.Position != "" {
-		name += " " + p.Position
-	}
 	if len(name) > nameWidth-1 {
 		name = name[:nameWidth-1]
 	}
 
 	row := rowStyle.Width(nameWidth).Render(name)
+	row += s.dimText.Width(posWidth).Render(p.Position)
 	for _, col := range cols {
 		val := col.format(p.Statistics)
 		row += s.dataCell.Width(col.width).Render(val)
 	}
 
 	// On-court indicator.
-	if p.OnCourt.Bool() {
+	if isLive && p.OnCourt.Bool() {
 		row += " ●"
 	}
 
