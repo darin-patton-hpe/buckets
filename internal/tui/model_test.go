@@ -396,6 +396,131 @@ func TestNavigateToScoreboard(t *testing.T) {
 	}
 }
 
+func TestNavigateToScoreboardPreservesDate(t *testing.T) {
+	m := NewModel(testMockClient())
+	m.selectedDate = time.Date(2024, 11, 15, 0, 0, 0, 0, time.Local)
+	detail, _ := newGameModel(testMockClient(), testGame(), 80, 24, m.s)
+	m.route = routeGameDetail
+	m.detail = detail
+
+	next, cmd := m.navigateToScoreboard()
+	got := asModel(t, next)
+
+	if got.route != routeScoreboard {
+		t.Fatalf("route = %v, want %v", got.route, routeScoreboard)
+	}
+	if got.selectedDate.IsZero() {
+		t.Fatal("selectedDate is zero, want preserved historical date")
+	}
+	if cmd == nil {
+		t.Fatal("cmd = nil, want non-nil")
+	}
+}
+
+func TestDateNavigationKeys(t *testing.T) {
+	t.Run("left arrow navigates to previous day", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+		m.games = []nbalive.Game{testGame()}
+
+		next, cmd := m.handleKey(keyCode(tea.KeyLeft))
+		got := asModel(t, next)
+		if got.isLive() {
+			t.Fatal("expected historical mode after left arrow")
+		}
+		if cmd == nil {
+			t.Fatal("cmd = nil, want fetch command")
+		}
+	})
+
+	t.Run("h key navigates to previous day", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+
+		next, cmd := m.handleKey(keyRune('h'))
+		got := asModel(t, next)
+		if got.isLive() {
+			t.Fatal("expected historical mode after h")
+		}
+		if cmd == nil {
+			t.Fatal("cmd = nil, want fetch command")
+		}
+	})
+
+	t.Run("right arrow from historical moves forward", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+		m.selectedDate = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
+
+		next, cmd := m.handleKey(keyCode(tea.KeyRight))
+		got := asModel(t, next)
+		if got.selectedDate.Day() != 2 {
+			t.Fatalf("expected day 2, got %d", got.selectedDate.Day())
+		}
+		if cmd == nil {
+			t.Fatal("cmd = nil, want fetch command")
+		}
+	})
+
+	t.Run("right arrow at today is no-op", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+
+		next, cmd := m.handleKey(keyCode(tea.KeyRight))
+		got := asModel(t, next)
+		if !got.isLive() {
+			t.Fatal("expected to stay in live mode")
+		}
+		if cmd != nil {
+			t.Fatalf("cmd = %v, want nil", cmd)
+		}
+	})
+
+	t.Run("t key returns to today from historical", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+		m.selectedDate = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
+
+		next, cmd := m.handleKey(keyRune('t'))
+		got := asModel(t, next)
+		if !got.isLive() {
+			t.Fatal("expected live mode after t")
+		}
+		if cmd == nil {
+			t.Fatal("cmd = nil, want fetch command")
+		}
+	})
+
+	t.Run("t key when already live is no-op", func(t *testing.T) {
+		m := NewModel(testMockClient())
+		m.route = routeScoreboard
+
+		next, cmd := m.handleKey(keyRune('t'))
+		got := asModel(t, next)
+		if !got.isLive() {
+			t.Fatal("expected to stay in live mode")
+		}
+		if cmd != nil {
+			t.Fatalf("cmd = %v, want nil", cmd)
+		}
+	})
+}
+
+func TestTickSkipsHistorical(t *testing.T) {
+	m := NewModel(testMockClient())
+	m.route = routeScoreboard
+	m.selectedDate = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
+
+	_, cmd := m.Update(scoreboardTickMsg(time.Now()))
+	if cmd == nil {
+		t.Fatal("cmd = nil, want tick continuation")
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.BatchMsg); ok {
+		t.Fatal("expected single tick cmd, got batch (should not fetch for historical)")
+	}
+}
+
 func TestModelView(t *testing.T) {
 	t.Run("scoreboard with games contains tricodes", func(t *testing.T) {
 		m := NewModel(testMockClient())
@@ -417,14 +542,17 @@ func TestModelView(t *testing.T) {
 		}
 	})
 
-	t.Run("scoreboard loading contains loading text", func(t *testing.T) {
+	t.Run("scoreboard loading shows skeleton rows and header", func(t *testing.T) {
 		m := NewModel(testMockClient())
 		m.games = nil
 		m.loading = true
 
 		v := m.View()
-		if !strings.Contains(v.Content, "Loading scoreboard...") {
-			t.Fatalf("loading view text not found: %q", v.Content)
+		if !strings.Contains(v.Content, "NBA Scoreboard") {
+			t.Fatalf("expected scoreboard header during loading, got: %q", v.Content)
+		}
+		if !strings.Contains(v.Content, "███") {
+			t.Fatalf("expected skeleton placeholder rows during loading, got: %q", v.Content)
 		}
 	})
 

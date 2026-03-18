@@ -11,10 +11,19 @@ import (
 
 const scoreboardInterval = 30 * time.Second
 
-// fetchScoreboardCmd fetches today's scoreboard.
 func fetchScoreboardCmd(client data.NBAClient) tea.Cmd {
 	return func() tea.Msg {
 		resp, err := client.Scoreboard(context.Background())
+		if err != nil {
+			return scoreboardMsg{err: err}
+		}
+		return scoreboardMsg{games: resp.Scoreboard.Games}
+	}
+}
+
+func fetchScoreboardByDateCmd(client data.NBAClient, date string) tea.Cmd {
+	return func() tea.Msg {
+		resp, err := client.ScoreboardByDate(context.Background(), date)
 		if err != nil {
 			return scoreboardMsg{err: err}
 		}
