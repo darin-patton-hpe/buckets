@@ -66,30 +66,33 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check for release PR
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_title=$(gh pr list --state merged --search "${{ github.sha }}" --json title --jq '.[0].title // ""')
+          if echo "$pr_title" | grep -qiE '^release v[0-9]+\.[0-9]+\.[0-9]+'; then
+            version=$(echo "$pr_title" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-go@v5
+        if: steps.check.outputs.should_release == 'true'
         with:
           go-version-file: go.mod
 
-      - name: Get next version
-        id: version
-        run: |
-          latest=$(git tag -l 'v*' --sort=-v:refname | head -n1)
-          if [ -z "$latest" ]; then
-            echo "tag=v0.1.0" >> "$GITHUB_OUTPUT"
-          else
-            # Increment patch version
-            major=$(echo "$latest" | cut -d. -f1)
-            minor=$(echo "$latest" | cut -d. -f2)
-            patch=$(echo "$latest" | cut -d. -f3)
-            echo "tag=${major}.${minor}.$((patch + 1))" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Create tag
+        if: steps.check.outputs.should_release == 'true'
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          git tag ${{ steps.check.outputs.version }}
+          git push origin ${{ steps.check.outputs.version }}
 
       - name: Release
+        if: steps.check.outputs.should_release == 'true'
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
