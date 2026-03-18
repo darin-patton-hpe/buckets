@@ -1,0 +1,25 @@
+version: 2
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+builds:
+  - main: ./cmd/buckets
+    binary: buckets
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+
+changelog:
+  sort: asc
