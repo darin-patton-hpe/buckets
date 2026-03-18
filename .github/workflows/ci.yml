@@ -66,14 +66,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for release PR
+      - name: Check for release commit
         id: check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pr_title=$(gh pr list --state merged --search "${{ github.sha }}" --json title --jq '.[0].title // ""')
-          if echo "$pr_title" | grep -qiE '^release v[0-9]+\.[0-9]+\.[0-9]+'; then
-            version=$(echo "$pr_title" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          msg=$(git log -1 --format='%s')
+          if echo "$msg" | grep -qiE '^release v[0-9]+\.[0-9]+\.[0-9]+'; then
+            version=$(echo "$msg" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
             echo "version=$version" >> "$GITHUB_OUTPUT"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           else
