@@ -28,6 +28,28 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+  validate-release:
+    needs: test
+    if: github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'release v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate VERSION matches PR title
+        run: |
+          title="${{ github.event.pull_request.title }}"
+          version=$(echo "$title" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          file_version=$(cat VERSION | tr -d '[:space:]')
+          if [ -z "$version" ]; then
+            echo "::error::PR title does not contain a valid semver version"
+            exit 1
+          fi
+          if [ "$file_version" != "$version" ]; then
+            echo "::error::VERSION file ($file_version) does not match PR title version ($version)"
+            exit 1
+          fi
+          echo "✓ VERSION file matches PR title: $version"
+
   alpha:
     needs: test
     if: github.event_name == 'pull_request'
