@@ -3,33 +3,55 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/darin-patton-hpe/nbalive"
 )
 
-// renderScoreboard renders the full scoreboard view.
-func renderScoreboard(games []nbalive.Game, cursor int, width int, s styles) string {
-	var b strings.Builder
+const dateDisplayFormat = "Mon, Jan 2, 2006"
 
-	b.WriteString(s.title.Render("🏀 NBA Scoreboard"))
+// skeletonCount is the number of placeholder rows shown while loading.
+const skeletonCount = 6
+
+func renderScoreboard(games []nbalive.Game, cursor int, width int, s styles, selectedDate time.Time, loading bool, spinnerView string) string {
+	var b strings.Builder
+	isLive := selectedDate.IsZero()
+
+	title := "🏀 NBA Scoreboard"
+	if loading {
+		title += "  " + spinnerView
+	}
+	b.WriteString(s.title.Render(title))
 	b.WriteString("\n")
 
-	if len(games) == 0 {
-		b.WriteString(s.dimText.Render("\n  No games today.\n"))
+	if isLive {
+		b.WriteString(s.subtitle.Render("Today — " + time.Now().Format(dateDisplayFormat)))
+	} else {
+		b.WriteString(s.subtitle.Render("◀ " + selectedDate.Format(dateDisplayFormat) + " ▶"))
+	}
+	b.WriteString("\n\n")
+
+	if loading && len(games) == 0 {
+		for range skeletonCount {
+			b.WriteString(renderSkeletonRow(s))
+			b.WriteString("\n")
+		}
 		return b.String()
 	}
 
-	// Date from first game.
-	if len(games) > 0 {
-		b.WriteString(s.subtitle.Render(games[0].GameET))
-		b.WriteString("\n\n")
+	if len(games) == 0 {
+		if isLive {
+			b.WriteString(s.dimText.Render("\n  No games today.\n"))
+		} else {
+			b.WriteString(s.dimText.Render("\n  No games on " + selectedDate.Format(dateDisplayFormat) + ".\n"))
+		}
+		return b.String()
 	}
 
 	for i, g := range games {
 		row := renderGameRow(g, s)
 		if i == cursor {
-			// Highlight selected row.
 			b.WriteString(s.gameRowSelected.Width(width).Render("▸ " + row))
 		} else {
 			b.WriteString(s.gameRow.Render("  " + row))
@@ -38,6 +60,11 @@ func renderScoreboard(games []nbalive.Game, cursor int, width int, s styles) str
 	}
 
 	return b.String()
+}
+
+// renderSkeletonRow renders a dim placeholder row that mimics the shape of a game row.
+func renderSkeletonRow(s styles) string {
+	return s.gameRow.Render("  " + s.dimText.Render("███  (██-██)   ███ - ███   ███  (██-██)    ████████"))
 }
 
 // renderGameRow renders a single game line: "AWY 105 - 102 HME  Q3 5:42 ● LIVE"

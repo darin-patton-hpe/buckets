@@ -11,10 +11,37 @@ import (
 func TestRenderScoreboard(t *testing.T) {
 	s := newStyles(true)
 
-	t.Run("empty games", func(t *testing.T) {
-		got := renderScoreboard(nil, 0, 100, s)
+	t.Run("empty games live mode", func(t *testing.T) {
+		got := renderScoreboard(nil, 0, 100, s, time.Time{}, false, "")
 		if !strings.Contains(got, "No games today") {
 			t.Fatalf("expected empty-state text, got: %q", got)
+		}
+		if !strings.Contains(got, "Today") {
+			t.Fatalf("expected 'Today' header in live mode, got: %q", got)
+		}
+	})
+
+	t.Run("empty games historical mode", func(t *testing.T) {
+		date := time.Date(2024, 7, 4, 0, 0, 0, 0, time.Local)
+		got := renderScoreboard(nil, 0, 100, s, date, false, "")
+		if !strings.Contains(got, "No games on") {
+			t.Fatalf("expected historical empty-state text, got: %q", got)
+		}
+		if !strings.Contains(got, "Thu, Jul 4, 2024") {
+			t.Fatalf("expected formatted date, got: %q", got)
+		}
+	})
+
+	t.Run("historical header shows arrows", func(t *testing.T) {
+		date := time.Date(2024, 11, 15, 0, 0, 0, 0, time.Local)
+		game := nbalive.Game{
+			GameStatus: nbalive.GameFinal,
+			AwayTeam:   nbalive.GameTeam{TeamTricode: "BOS"},
+			HomeTeam:   nbalive.GameTeam{TeamTricode: "LAL"},
+		}
+		got := renderScoreboard([]nbalive.Game{game}, 0, 120, s, date, false, "")
+		if !strings.Contains(got, "◀") || !strings.Contains(got, "▶") {
+			t.Fatalf("expected arrow indicators in historical header, got: %q", got)
 		}
 	})
 
@@ -28,7 +55,7 @@ func TestRenderScoreboard(t *testing.T) {
 			HomeTeam:       nbalive.GameTeam{TeamTricode: "LAL", Score: 102, Wins: 30, Losses: 22},
 		}
 
-		got := renderScoreboard([]nbalive.Game{game}, 0, 120, s)
+		got := renderScoreboard([]nbalive.Game{game}, 0, 120, s, time.Time{}, false, "")
 		for _, want := range []string{"BOS", "LAL", "108", "102", "FINAL"} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("expected %q in output, got: %q", want, got)
@@ -45,7 +72,7 @@ func TestRenderScoreboard(t *testing.T) {
 			HomeTeam:   nbalive.GameTeam{TeamTricode: "LAL", Score: 60},
 		}
 
-		got := renderScoreboard([]nbalive.Game{game}, 0, 120, s)
+		got := renderScoreboard([]nbalive.Game{game}, 0, 120, s, time.Time{}, false, "")
 		for _, want := range []string{"LIVE", "Q2 5:30"} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("expected %q in output, got: %q", want, got)
@@ -58,9 +85,44 @@ func TestRenderScoreboard(t *testing.T) {
 			{AwayTeam: nbalive.GameTeam{TeamTricode: "BOS"}, HomeTeam: nbalive.GameTeam{TeamTricode: "LAL"}},
 			{AwayTeam: nbalive.GameTeam{TeamTricode: "NYK"}, HomeTeam: nbalive.GameTeam{TeamTricode: "MIA"}},
 		}
-		got := renderScoreboard(games, 1, 120, s)
+		got := renderScoreboard(games, 1, 120, s, time.Time{}, false, "")
 		if !strings.Contains(got, "▸") {
 			t.Fatalf("expected selected-row pointer, got: %q", got)
+		}
+	})
+
+	t.Run("loading shows skeleton rows and spinner", func(t *testing.T) {
+		got := renderScoreboard(nil, 0, 100, s, time.Time{}, true, "⠋")
+		if !strings.Contains(got, "███") {
+			t.Fatalf("expected skeleton placeholder blocks, got: %q", got)
+		}
+		if !strings.Contains(got, "⠋") {
+			t.Fatalf("expected spinner in title, got: %q", got)
+		}
+		if strings.Contains(got, "No games today") {
+			t.Fatalf("should not show empty-state text while loading, got: %q", got)
+		}
+		rowCount := strings.Count(got, "████████")
+		if rowCount != skeletonCount {
+			t.Fatalf("expected %d skeleton rows, got %d", skeletonCount, rowCount)
+		}
+	})
+
+	t.Run("loading historical shows skeleton rows with date header", func(t *testing.T) {
+		date := time.Date(2024, 11, 15, 0, 0, 0, 0, time.Local)
+		got := renderScoreboard(nil, 0, 100, s, date, true, "⠋")
+		if !strings.Contains(got, "◀") || !strings.Contains(got, "▶") {
+			t.Fatalf("expected date arrows in header, got: %q", got)
+		}
+		if !strings.Contains(got, "███") {
+			t.Fatalf("expected skeleton rows, got: %q", got)
+		}
+	})
+
+	t.Run("not loading hides spinner from title", func(t *testing.T) {
+		got := renderScoreboard(nil, 0, 100, s, time.Time{}, false, "")
+		if strings.Contains(got, "⠋") {
+			t.Fatalf("spinner should not appear when not loading, got: %q", got)
 		}
 	})
 }

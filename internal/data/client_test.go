@@ -12,7 +12,7 @@ import (
 
 func TestInterfaceConformance(t *testing.T) {
 	var _ data.NBAClient = (*data.MockClient)(nil)
-	var _ data.NBAClient = (*data.LiveClient)(nil)
+	var _ data.NBAClient = (*data.Client)(nil)
 }
 
 func TestMockClientScoreboard_DefaultAndCustom(t *testing.T) {
@@ -46,6 +46,45 @@ func TestMockClientScoreboard_DefaultAndCustom(t *testing.T) {
 		}
 		if got != want {
 			t.Fatalf("Scoreboard() returned unexpected pointer")
+		}
+	})
+}
+
+func TestMockClientScoreboardByDate_DefaultAndCustom(t *testing.T) {
+	t.Run("default returns empty response", func(t *testing.T) {
+		m := &data.MockClient{}
+		resp, err := m.ScoreboardByDate(context.Background(), "2024-11-15")
+		if err != nil {
+			t.Fatalf("ScoreboardByDate() error = %v", err)
+		}
+		if resp == nil {
+			t.Fatal("ScoreboardByDate() response is nil")
+		}
+		if len(resp.Scoreboard.Games) != 0 {
+			t.Fatalf("expected no games, got %d", len(resp.Scoreboard.Games))
+		}
+	})
+
+	t.Run("custom function result is returned", func(t *testing.T) {
+		want := &nbalive.ScoreboardResponse{
+			Scoreboard: nbalive.Scoreboard{Games: []nbalive.Game{{GameID: "g1"}}},
+		}
+		wantDate := "2024-11-15"
+		m := &data.MockClient{
+			ScoreboardByDateFunc: func(_ context.Context, date string) (*nbalive.ScoreboardResponse, error) {
+				if date != wantDate {
+					t.Fatalf("ScoreboardByDate() date = %q, want %q", date, wantDate)
+				}
+				return want, nil
+			},
+		}
+
+		got, err := m.ScoreboardByDate(context.Background(), wantDate)
+		if err != nil {
+			t.Fatalf("ScoreboardByDate() error = %v", err)
+		}
+		if got != want {
+			t.Fatalf("ScoreboardByDate() returned unexpected pointer")
 		}
 	})
 }

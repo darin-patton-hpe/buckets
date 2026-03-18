@@ -107,7 +107,7 @@ func TestFitColumns(t *testing.T) {
 	})
 
 	t.Run("narrow width fits subset", func(t *testing.T) {
-		got := fitColumns(cols, nameWidth+9, nameWidth)
+		got := fitColumns(cols, nameWidth+11, nameWidth)
 		if len(got) != 2 {
 			t.Fatalf("fitColumns(narrow) count = %d, want 2", len(got))
 		}

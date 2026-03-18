@@ -8,10 +8,11 @@ import (
 	"github.com/darin-patton-hpe/buckets/internal/data"
 	"github.com/darin-patton-hpe/buckets/internal/tui"
 	"github.com/darin-patton-hpe/nbalive/live"
+	"github.com/darin-patton-hpe/nbalive/stats"
 )
 
 func main() {
-	client := data.NewLiveClient(live.NewClient())
+	client := data.NewClient(live.NewClient(), stats.NewClient())
 	m := tui.NewModel(client)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {

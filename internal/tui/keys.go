@@ -16,6 +16,11 @@ const (
 	keyTwo      = "2"
 	keyThree    = "3"
 	keyQuestion = "?"
+	keyLeft     = "left"
+	keyRight    = "right"
+	keyLeftAlt  = "h"
+	keyRightAlt = "l"
+	keyToday    = "t"
 )
 
 // Tab indices.
@@ -35,7 +40,7 @@ var tabNames = [tabCount]string{
 
 // helpScoreboard returns help text for the scoreboard view.
 func helpScoreboard() string {
-	return " ↑/k up • ↓/j down • enter select • q quit"
+	return " ↑/k up • ↓/j down • ←/h prev day • →/l next day • t today • enter select • q quit"
 }
 
 // helpGame returns help text for the game detail view.

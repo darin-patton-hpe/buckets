@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"github.com/darin-patton-hpe/buckets/internal/data"
@@ -25,11 +27,12 @@ type Model struct {
 	s      styles
 
 	// Scoreboard state.
-	games   []nbalive.Game
-	cursor  int
-	sbErr   error
-	loading bool
-	spinner spinner.Model
+	games        []nbalive.Game
+	cursor       int
+	sbErr        error
+	loading      bool
+	spinner      spinner.Model
+	selectedDate time.Time // zero value = live/today
 
 	// Game detail sub-model (nil when on scoreboard).
 	detail *gameModel
@@ -51,7 +54,10 @@ func NewModel(client data.NBAClient) Model {
 	}
 }
 
-// Init returns the initial commands: fetch scoreboard, start tick, detect theme.
+func (m Model) isLive() bool {
+	return m.selectedDate.IsZero()
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		fetchScoreboardCmd(m.client),
@@ -94,14 +100,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case scoreboardTickMsg:
-		// Only refresh if we're on the scoreboard.
-		if m.route == routeScoreboard {
+		if m.route == routeScoreboard && m.isLive() {
 			return m, tea.Batch(
 				fetchScoreboardCmd(m.client),
 				scoreboardTickCmd(),
 			)
 		}
-		// Keep ticking even when in detail view so we return to fresh data.
 		return m, scoreboardTickCmd()
 
 	case spinner.TickMsg:
@@ -156,6 +160,18 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case keyDown, keyDownAlt:
 			if m.cursor < len(m.games)-1 {
 				m.cursor++
+			}
+		case keyLeft, keyLeftAlt:
+			return m.navigateDate(-1)
+		case keyRight, keyRightAlt:
+			return m.navigateDate(1)
+		case keyToday:
+			if !m.isLive() {
+				m.selectedDate = time.Time{}
+				m.games = nil
+				m.cursor = 0
+				m.loading = true
+				return m, tea.Batch(fetchScoreboardCmd(m.client), m.spinner.Tick)
 			}
 		case keyEnter:
 			return m.navigateToGame()
@@ -215,16 +231,50 @@ func (m Model) navigateToGame() (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// navigateToScoreboard returns to the scoreboard view.
 func (m Model) navigateToScoreboard() (tea.Model, tea.Cmd) {
 	if m.detail != nil {
 		m.detail.stopWatch()
 	}
 	m.detail = nil
 	m.route = routeScoreboard
+
+	var fetchCmd tea.Cmd
+	if m.isLive() {
+		fetchCmd = fetchScoreboardCmd(m.client)
+	} else {
+		fetchCmd = fetchScoreboardByDateCmd(m.client, m.selectedDate.Format("2006-01-02"))
+	}
+	return m, tea.Batch(fetchCmd, scoreboardTickCmd())
+}
+
+func (m Model) navigateDate(days int) (tea.Model, tea.Cmd) {
+	var base time.Time
+	if m.isLive() {
+		base = time.Now()
+	} else {
+		base = m.selectedDate
+	}
+
+	target := base.AddDate(0, 0, days)
+	today := time.Now()
+	if target.After(today) {
+		if m.isLive() {
+			return m, nil
+		}
+		m.selectedDate = time.Time{}
+		m.games = nil
+		m.cursor = 0
+		m.loading = true
+		return m, tea.Batch(fetchScoreboardCmd(m.client), m.spinner.Tick)
+	}
+
+	m.selectedDate = target
+	m.games = nil
+	m.cursor = 0
+	m.loading = true
 	return m, tea.Batch(
-		fetchScoreboardCmd(m.client),
-		scoreboardTickCmd(),
+		fetchScoreboardByDateCmd(m.client, target.Format("2006-01-02")),
+		m.spinner.Tick,
 	)
 }
 
@@ -234,10 +284,7 @@ func (m Model) View() tea.View {
 
 	switch m.route {
 	case routeScoreboard:
-		content = renderScoreboard(m.games, m.cursor, m.width, m.s)
-		if m.loading && len(m.games) == 0 {
-			content = "  " + m.spinner.View() + " Loading scoreboard..."
-		}
+		content = renderScoreboard(m.games, m.cursor, m.width, m.s, m.selectedDate, m.loading, m.spinner.View())
 		if m.sbErr != nil && len(m.games) == 0 {
 			content = m.s.errText.Render("Error: "+m.sbErr.Error()) + "\n"
 		}
