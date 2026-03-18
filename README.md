@@ -83,18 +83,20 @@ go mod edit -dropreplace github.com/darin-patton-hpe/nbalive
 
 ## Releasing
 
-Releases are automated via GitHub Actions and [GoReleaser](https://goreleaser.com). To create a release, open a PR with a title starting with `release v` followed by a semver version:
+Releases are automated via GitHub Actions and [GoReleaser](https://goreleaser.com). To create a release:
 
-```
-release v1.0.0
-```
+1. Update the `VERSION` file to the new version (e.g., `v1.0.0`)
+2. Open a PR titled `release v1.0.0`
+3. Merge the PR
 
-When the PR is merged, GitHub uses the PR title as the merge commit message. CI detects the version from the commit message and:
+When merged, CI validates that the `VERSION` file matches the version in the merge commit message, then:
 
 1. Runs tests
 2. Creates a git tag matching the version
 3. Builds binaries for darwin, linux, and windows (amd64 and arm64)
 4. Publishes a GitHub Release with the artifacts
+
+The release will fail if the `VERSION` file does not match the version in the PR title.
 
 Pull requests targeting `main` automatically build snapshot binaries, available as downloadable artifacts on the workflow run.
 
